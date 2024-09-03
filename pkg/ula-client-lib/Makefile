@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright (c) 2024  Panasonic Automotive Systems, Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+#CURDIR := $(dir $(lastword $(MAKEFILE_LIST)))
+
+GO?=go
+GOBUILDFLAGS?=-v
+
+###linux
+GOOS?=linux
+
+###################
+
+###x86_64 64-bit
+GOARCH?=amd64
+
+###arm64 64-bit
+#GOARCH?=arm64
+
+ifeq ($(GOOS), linux)
+    ifeq ($(GOARCH), amd64)
+        LIBTARGET=gcc
+    else ifeq ($(GOARCH), arm64)
+        LIBTARGET=aarch64-linux-gnu-gcc
+    endif
+endif
+
+THIS_DIR=.
+
+ULACLIENTSO?=libulaclient.so
+ULACLIENTH?=libulaclient.h
+INSTALL_LIBDIR?=$(GOPATH)/pkg/libulaclient
+
+
+.PHONY: ulaclientlib
+ulaclientlib:
+	set -e ; \
+	GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=1 CC=${LIBTARGET} $(GO) build -buildmode=c-shared -o $(ULACLIENTSO) $(GOBUILDFLAGS) -ldflags '-extldflags "-Wl,-soname=$(ULACLIENTSO)"' . ; \
+	install -o $(USER) -g $(USER) -m 755 -d $(INSTALL_LIBDIR) ; \
+	install -o $(USER) -g $(USER) -m 664 $(ULACLIENTSO) $(INSTALL_LIBDIR)/$(ULACLIENTSO) ; \
+	install -o $(USER) -g $(USER) -m 664 $(ULACLIENTH) $(INSTALL_LIBDIR)/$(ULACLIENTH) ; \
+	rm $(ULACLIENTSO) $(ULACLIENTH)
+
+.PHONY: test
+test: $(TEST_MODULES)
+	set -e;\
+	$(GO) test .
+
+.PHONY: fmt
+fmt: $(FMT_MODULES)
+	set -e;\
+	$(GO) fmt .
+
+.PHONY: lint
+lint: $(LINT_MODULES)
+	set -e;\
+	$(GO) vet .
+
+.PHONY: doc
+doc: $(DOC_MODULES)
+	set -e;\
+	$(GO) doc .
+
+.PHONY: clean
+clean: $(CLEAN_MODULES)
+	set -e;\
+	$(GO) clean -v .

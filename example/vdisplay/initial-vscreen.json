@@ -1,0 +1,35 @@
+{
+    "command": "initial_vscreen",
+    "vlayer": [
+		{
+			"VID": 910000, 
+            "coord": "vdisplay", 
+            "vdisplay_id": 0,
+            "virtual_w": 960, 
+            "virtual_h": 540, 
+            "vsrc_x": 0,  
+            "vsrc_y": 0, 
+            "vsrc_w": 960, 
+            "vsrc_h": 540, 
+            "vdst_x": 960, 
+            "vdst_y": 540, 
+            "vdst_w": 960, 
+            "vdst_h": 540,
+			"vsurface": [
+				{
+                    "VID": 5100, 
+                    "pixel_w": 400, 
+                    "pixel_h": 240, 
+                    "psrc_x": 0, 
+                    "psrc_y": 0, 
+                    "psrc_w": 400, 
+                    "psrc_h": 240,  
+                    "vdst_x": 0, 
+                    "vdst_y": 0, 
+                    "vdst_w": 960, 
+                    "vdst_h": 540
+                }
+			]
+		}
+    ]
+}
