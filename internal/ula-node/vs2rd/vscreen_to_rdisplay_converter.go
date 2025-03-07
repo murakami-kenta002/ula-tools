@@ -68,6 +68,7 @@ func convVSurface2PSurface(vsurf *ula.VirtualSurface) *ulanode.PixelSurface {
 
 	psurf.ParentVID = vsurf.ParentVID
 	psurf.VID = vsurf.VID
+	psurf.AppID = vsurf.AppID
 
 	psurf.PixelW = vsurf.PixelW
 	psurf.PixelH = vsurf.PixelH
