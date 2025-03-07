@@ -20,11 +20,11 @@ package readclusterapp
 import (
 	"encoding/json"
 	"errors"
+	"io/ioutil"
+	"path/filepath"
 	"ula-tools/internal/ula"
 	"ula-tools/internal/ula-client/core"
 	. "ula-tools/internal/ulog"
-	"io/ioutil"
-	"path/filepath"
 )
 
 const (

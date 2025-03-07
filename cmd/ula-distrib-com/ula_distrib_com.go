@@ -21,11 +21,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"ula-tools/internal/ula"
 	"ula-tools/internal/ula-client/ulamulticonn"
 	. "ula-tools/internal/ulog"
-	"io/ioutil"
-	"os"
 )
 
 func readStdinCommand() (string, error) {

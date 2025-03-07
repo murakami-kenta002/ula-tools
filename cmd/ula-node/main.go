@@ -24,17 +24,18 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"ula-tools/internal/ula"
-	"ula-tools/internal/ula-node"
-	"ula-tools/internal/ula-node/iviwinmgr"
-	"ula-tools/internal/ula-node/vs2rd"
-	. "ula-tools/internal/ulog"
 	"io"
 	"net"
 	"os"
 	"reflect"
 	"strconv"
 	"sync"
+	"ula-tools/internal/ula"
+	"ula-tools/internal/ula-node"
+	"ula-tools/internal/ula-node/aglwinmgr"
+	"ula-tools/internal/ula-node/iviwinmgr"
+	"ula-tools/internal/ula-node/vs2rd"
+	. "ula-tools/internal/ulog"
 )
 
 var MAGIC_CODE []byte = []byte{0x55, 0x4C, 0x41, 0x30} // 'ULA0' ascii code
@@ -231,6 +232,7 @@ func processCommandLoop(
 	respChan chan ulanode.LocalCommandReq,
 	jsonChan chan map[string]interface{},
 	retChansMap map[int]interface{},
+	winMgr string,
 ) {
 
 	vs2rdConv, err := vs2rd.NewVscreen2RdisplayConverter(vscrn, nodeId)
@@ -293,14 +295,35 @@ func processCommandLoop(
 			commResponseResult(ret, listenerId, retChansMap)
 			continue
 		}
+		var ltg ulanode.LocalCommandGenerator
+		switch winMgr {
+		case "wayland":
+			iviltg, err := iviwinmgr.NewIviCommandGenerator(spscrns)
+			if err != nil {
+				ret = -1
+				commResponseResult(ret, listenerId, retChansMap)
+				continue
+			}
+			ltg = iviltg
 
-		iviltg, err := iviwinmgr.NewIviCommandGenerator(spscrns)
-		if err != nil {
-			ret = -1
-			commResponseResult(ret, listenerId, retChansMap)
-			continue
+		case "agl":
+			aglltg, err := aglwinmgr.NewAglCommandGenerator(spscrns)
+			if err != nil {
+				ret = -1
+				commResponseResult(ret, listenerId, retChansMap)
+				continue
+			}
+			ltg = aglltg
+		default:
+			aglltg, err := aglwinmgr.NewAglCommandGenerator(spscrns)
+			if err != nil {
+				ret = -1
+				commResponseResult(ret, listenerId, retChansMap)
+				continue
+			}
+			ltg = aglltg
 		}
-		var ltg ulanode.LocalCommandGenerator = iviltg
+
 		reqs, err := ltg.GenerateLocalCommandReq(acdata)
 		if err != nil {
 			ret = -1
@@ -369,11 +392,12 @@ func mainLoop(
 	vscrn *ulanode.VirtualScreen,
 	nodeId int,
 	reqChan chan ulanode.LocalCommandReq,
-	respChan chan ulanode.LocalCommandReq) {
+	respChan chan ulanode.LocalCommandReq,
+	winMgr string) {
 
 	jsonChan := make(chan map[string]interface{}, 1)
 	retChansMap := make(map[int]interface{})
-	go processCommandLoop(vscrn, nodeId, reqChan, respChan, jsonChan, retChansMap)
+	go processCommandLoop(vscrn, nodeId, reqChan, respChan, jsonChan, retChansMap, winMgr)
 
 	listenerId := 0
 	for {
@@ -409,6 +433,7 @@ func main() {
 		vScrnDefFile string
 		keyNodeId    int
 		keyHostName  string
+		winMgr       string
 	)
 
 	flag.BoolVar(&verbose, "v", true, "verbose info log")
@@ -416,6 +441,7 @@ func main() {
 	flag.StringVar(&vScrnDefFile, "f", "", "virtual-screen-def.json file Path")
 	flag.IntVar(&keyNodeId, "N", -1, "search ula-node param by node_id from VScrnDef file")
 	flag.StringVar(&keyHostName, "H", "", "search ula-node param by hostname from VScrnDef file")
+	flag.StringVar(&winMgr, "W", "agl", "whether to use Weston ivi-shell(wayland) or agl-compositor(agl) for the window manager.")
 
 	flag.Parse()
 
@@ -525,7 +551,15 @@ func main() {
 	reqChan := make(chan ulanode.LocalCommandReq, 5)
 	respChan := make(chan ulanode.LocalCommandReq, 5)
 
-	go iviwinmgr.Start(reqChan, respChan)
-
-	mainLoop(listener, vscrn, nodeId, reqChan, respChan)
+	switch winMgr {
+	case "wayland":
+		DLog.Println("iviwinmgr is launched")
+		go iviwinmgr.Start(reqChan, respChan)
+	case "agl":
+		DLog.Println("aglwinmgr is launched")
+		go aglwinmgr.Start(reqChan, respChan)
+	default:
+		go aglwinmgr.Start(reqChan, respChan)
+	}
+	mainLoop(listener, vscrn, nodeId, reqChan, respChan, winMgr)
 }
