@@ -26,6 +26,7 @@ const OPACITY float64 = 1.0
 
 type AglSurfaceJson struct {
 	Id         int     `json:"id"`
+	AppId      string  `json:"app_id"`
 	Width      int     `json:"width"`
 	Height     int     `json:"height"`
 	SrcX       int     `json:"src_x"`

@@ -109,6 +109,7 @@ func genInitialScreenProtocolJson(req ulanode.LocalCommandReq) (string, error) {
 
 				aglSurf := AglSurfaceJson{
 					Id:         psurf.VID,
+					AppId:      psurf.AppID,
 					Width:      psurf.PixelW,
 					Height:     psurf.PixelH,
 					SrcX:       psurf.PsrcX,

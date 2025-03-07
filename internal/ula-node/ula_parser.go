@@ -111,6 +111,11 @@ func generateSurfaceFromParam(layerId int, mSurface map[string]interface{}) (*ul
 		return nil, err
 	}
 
+	appId, err := getStringFromJson(mSurface, "AppID")
+	if err != nil {
+		return nil, err
+	}
+
 	pixelW, err := getIntFromJson(mSurface, "pixel_w")
 	if err != nil {
 		return nil, err
@@ -181,6 +186,7 @@ func generateSurfaceFromParam(layerId int, mSurface map[string]interface{}) (*ul
 	vsurface := ula.VirtualSurface{
 		ParentVID:  layerId,
 		VID:        surfaceId,
+		AppID:      appId,
 		PixelW:     pixelW,
 		PixelH:     pixelH,
 		PsrcX:      psrcX,

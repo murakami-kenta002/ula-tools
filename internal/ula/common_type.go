@@ -44,6 +44,7 @@ const (
 type VirtualSurface struct {
 	ParentVID int
 	VID       int
+	AppID     string
 
 	PixelW int
 	PixelH int
