@@ -111,7 +111,7 @@ func generateSurfaceFromParam(layerId int, mSurface map[string]interface{}) (*ul
 		return nil, err
 	}
 
-	appId, err := getStringFromJson(mSurface, "AppID")
+	appId, err := getStringFromJson(mSurface, "APPID")
 	if err != nil {
 		return nil, err
 	}

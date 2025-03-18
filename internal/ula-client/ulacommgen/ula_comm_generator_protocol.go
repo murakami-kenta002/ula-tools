@@ -20,7 +20,7 @@ package ulacommgen
 /*  Ula Protocol for Initial VSurface */
 type UPIVsurface struct {
 	VID        int    `json:"VID"`
-	AppID      string `json:"AppID"`
+	AppID      string `json:"APPID"`
 	PixelW     int    `json:"pixel_w"`
 	PixelH     int    `json:"pixel_h"`
 	PsrcX      int    `json:"psrc_x"`
