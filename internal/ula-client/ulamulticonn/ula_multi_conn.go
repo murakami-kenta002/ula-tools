@@ -156,8 +156,11 @@ func handleConnectTarget(ums *UlaMultiConnector, addr string, sendChan chan stri
 	}
 	defer conn.Close()
 
+	Mutex.Lock()
 	ums.sendChans = append(ums.sendChans, sendChan)
 	ums.respChans = append(ums.respChans, respChan)
+	Mutex.Unlock()
+
 	wg.Done()
 	for {
 		select {
