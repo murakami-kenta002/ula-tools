@@ -40,8 +40,9 @@ const (
 	COORD_VDISPLAY
 )
 
-/* internal struct data */
 type VirtualSurface struct {
+	AppName string
+
 	ParentVID int
 	VID       int
 
@@ -67,10 +68,12 @@ func (sVsurf *VirtualSurface) Dup() *VirtualSurface {
 }
 
 type VirtualLayer struct {
+	AppName string
+
 	VID int
 
 	Coord      Coord
-	VDisplayId int /* only used if COORD is COORD_VDISPLAY */
+	VDisplayId int
 
 	VirtualW int
 	VirtualH int
@@ -100,4 +103,16 @@ func (sVlayer *VirtualLayer) Dup() *VirtualLayer {
 	}
 
 	return &copiedVLayer
+}
+
+type VirtualSafetyArea struct {
+	VirtualX int
+	VirtualY int
+	VirtualW int
+	VirtualH int
+}
+
+func (vsaftyarea *VirtualSafetyArea) Dup() *VirtualSafetyArea {
+	copied := *vsaftyarea
+	return &copied
 }

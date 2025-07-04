@@ -24,10 +24,11 @@ import (
 	. "ula-tools/internal/ulog"
 )
 
-/* util function */
 func convCAVSurface2UPIVsurface(csurf *core.CAVsurface) *UPIVsurface {
 
 	usurf := new(UPIVsurface)
+
+	usurf.AppName = csurf.AppName
 
 	usurf.VID = csurf.VID
 
@@ -51,6 +52,8 @@ func convCAVSurface2UPIVsurface(csurf *core.CAVsurface) *UPIVsurface {
 func convCAVlayer2UPIVlayer(clayer *core.CAVlayer) *UPIVlayer {
 
 	ulayer := new(UPIVlayer)
+
+	ulayer.AppName = clayer.AppName
 
 	ulayer.VID = clayer.VID
 	ulayer.Coord = clayer.Coord
@@ -98,6 +101,8 @@ func convCAVLayoutTree2UPIVscreen(ctree *core.CALayoutTree) *UPIVscreen {
 func convVirtualSurface2UPIVsurface(vsurf *ula.VirtualSurface) *UPIVsurface {
 	usurf := new(UPIVsurface)
 
+	usurf.AppName = vsurf.AppName
+
 	usurf.VID = vsurf.VID
 
 	usurf.PixelW = vsurf.PixelW
@@ -130,29 +135,5 @@ func GenerateUlaCommInitialVscreen(ctree *core.CALayoutTree) (string, error) {
 
 	msg = string(jsonBytes)
 
-	return msg, nil
-}
-
-func GenerateUlaCommGetVlayer(vid int) (string, error) {
-
-	var msg string
-	uscreen := new(UPIVscreen)
-	uscreen.Command = "get_vlayer"
-
-	ulayers := make([]UPIVlayer, 0)
-
-	ulayer := UPIVlayer{
-		VID: vid,
-	}
-	ulayers = append(ulayers, ulayer)
-
-	uscreen.Layer = ulayers
-
-	jsonBytes, err := json.Marshal(uscreen)
-	if err != nil {
-		return msg, err
-	}
-
-	msg = string(jsonBytes)
 	return msg, nil
 }

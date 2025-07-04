@@ -22,9 +22,7 @@ GOBUILDFLAGS?=-v
 
 THIS_DIR=.
 
-MODULES=vs2rd \
-	iviwinmgr \
-	rvgpuwinmgr
+MODULES=
 
 INSTALL_MODULES=$(patsubst %,install-%, $(MODULES))
 CLEAN_MODULES=$(patsubst %,clean-%, $(MODULES))

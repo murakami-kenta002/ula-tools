@@ -23,7 +23,7 @@ import (
 
 type IdPair struct {
 	LayerId   int
-	SurfaceId int // should be -1 if SurfaceId is not used
+	SurfaceId int
 }
 
 type ApplyCommandData struct {
@@ -63,6 +63,48 @@ func DupVirtualLayerSliceIfNeed(srcVlayers []ula.VirtualLayer,
 	return dstVlayers
 }
 
+func DupVirtualSafetyAreaSlice(srcVSafetyAreas []ula.VirtualSafetyArea) []ula.VirtualSafetyArea {
+
+	dstVSafetyAreas := make([]ula.VirtualSafetyArea, 0)
+
+	for _, sVSafetyArea := range srcVSafetyAreas {
+		dstVSafetyAreas = append(dstVSafetyAreas, *sVSafetyArea.Dup())
+	}
+
+	return dstVSafetyAreas
+}
+
+type PixelSafetyArea struct {
+	PixelX int
+	PixelY int
+	PixelW int
+	PixelH int
+}
+
+func NewEmptyPixelSafetyArea() *PixelSafetyArea {
+
+	psafetyarea := PixelSafetyArea{}
+
+	return &psafetyarea
+}
+
+func (sPSafetyArea *PixelSafetyArea) Dup() *PixelSafetyArea {
+
+	copiedPSafetyArea := *sPSafetyArea
+	return &copiedPSafetyArea
+}
+
+func DupPixelSafetyAreaSlice(srcPSafetyAreas []PixelSafetyArea) []PixelSafetyArea {
+
+	dstPSafetyAreas := make([]PixelSafetyArea, 0)
+
+	for _, sPSafetyArea := range srcPSafetyAreas {
+		dstPSafetyAreas = append(dstPSafetyAreas, *sPSafetyArea.Dup())
+	}
+
+	return dstPSafetyAreas
+}
+
 type RealDisplay struct {
 	NodeId     int
 	PixelW     int
@@ -77,6 +119,8 @@ func (rdsp *RealDisplay) Dup() *RealDisplay {
 }
 
 type PixelSurface struct {
+	AppName string
+
 	ParentVID int
 	VID       int
 
@@ -120,6 +164,8 @@ func DupPixelSurfaceSlice(srcPsurfaces []PixelSurface) []PixelSurface {
 }
 
 type PixelLayer struct {
+	AppName string
+
 	VID    int
 	PixelW int
 	PixelH int
@@ -191,15 +237,17 @@ func DupPixelLayerSliceWithoutSurface(srcPlayers []PixelLayer) []PixelLayer {
 }
 
 type PixelScreen struct {
-	Rdisplay RealDisplay
-	Players  []PixelLayer
+	Rdisplay     RealDisplay
+	Players      []PixelLayer
+	PsafetyAreas []PixelSafetyArea
 }
 
-func NewPixelScreen(rdsp *RealDisplay, players []PixelLayer) (*PixelScreen, error) {
+func NewPixelScreen(rdsp *RealDisplay, players []PixelLayer, psafetyareas []PixelSafetyArea) (*PixelScreen, error) {
 
 	pscrn := PixelScreen{
-		Rdisplay: *rdsp,
-		Players:  DupPixelLayerSlice(players),
+		Rdisplay:     *rdsp,
+		Players:      DupPixelLayerSlice(players),
+		PsafetyAreas: DupPixelSafetyAreaSlice(psafetyareas),
 	}
 
 	return &pscrn, nil
@@ -244,6 +292,7 @@ type RdisplayCommandData struct {
 	InsertOrder string
 	ReferenceId int
 	Players     []PixelLayer
+	SafetyAreas []PixelSafetyArea
 }
 
 func NewRdisplayCommandData(rdisp *RealDisplay, players []PixelLayer) (*RdisplayCommandData, error) {
@@ -251,6 +300,17 @@ func NewRdisplayCommandData(rdisp *RealDisplay, players []PixelLayer) (*Rdisplay
 	dcomm := RdisplayCommandData{
 		Rdisplay: *rdisp.Dup(),
 		Players:  DupPixelLayerSlice(players),
+	}
+
+	return &dcomm, nil
+}
+
+func NewRdisplayCommandDataWithSafetyArea(rdisp *RealDisplay, players []PixelLayer, safetyareas []PixelSafetyArea) (*RdisplayCommandData, error) {
+
+	dcomm := RdisplayCommandData{
+		Rdisplay:    *rdisp.Dup(),
+		Players:     DupPixelLayerSlice(players),
+		SafetyAreas: DupPixelSafetyAreaSlice(safetyareas),
 	}
 
 	return &dcomm, nil
@@ -283,5 +343,6 @@ type GeometoryConverter interface {
 }
 
 type LocalCommandGenerator interface {
-	GenerateLocalCommandReq(*ApplyCommandData) ([]*LocalCommandReq, error)
+	Start(reqChan chan LocalCommandReq, respChan chan LocalCommandReq)
+	GenerateLocalCommandReq(*ApplyCommandData, *NodePixelScreens, *NodePixelScreens) ([]*LocalCommandReq, error)
 }

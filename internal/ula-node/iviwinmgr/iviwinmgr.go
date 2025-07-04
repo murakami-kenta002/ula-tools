@@ -23,12 +23,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"ula-tools/internal/ula-node"
-	. "ula-tools/internal/ulog"
 	"net"
 	"os"
 	"reflect"
 	"time"
+	"ula-tools/internal/ula-node"
+	. "ula-tools/internal/ulog"
 )
 
 func retryConnectTarget(sockChan chan net.Conn, stopChan chan struct{}) {
@@ -36,7 +36,7 @@ func retryConnectTarget(sockChan chan net.Conn, stopChan chan struct{}) {
 		conn, err := net.Dial("unix", UHMI_IVI_WM_SOCK)
 		if err == nil {
 			sockChan <- conn
-			break
+			return
 		}
 		time.Sleep(10 * time.Millisecond)
 
@@ -57,12 +57,16 @@ func connectTarget() net.Conn {
 	sockChan := make(chan net.Conn, 1)
 	stopChan := make(chan struct{})
 
+	defer func() {
+		close(sockChan)
+		close(stopChan)
+	}()
+
 	go retryConnectTarget(sockChan, stopChan)
 
 	select {
 	case <-ctx.Done():
 		ELog.Println("Dial cannot connect to uhmi-ivi-wm")
-		close(stopChan)
 		return nil
 	case conn = <-sockChan:
 		ILog.Println("Dial connected to uhmi-ivi-wm")
@@ -72,7 +76,7 @@ func connectTarget() net.Conn {
 	return conn
 }
 
-func Start(reqChan chan ulanode.LocalCommandReq, respChan chan ulanode.LocalCommandReq) {
+func (plugin IviPlugin) Start(reqChan chan ulanode.LocalCommandReq, respChan chan ulanode.LocalCommandReq) {
 
 	conn := connectTarget()
 	if conn != nil {
@@ -83,7 +87,6 @@ func Start(reqChan chan ulanode.LocalCommandReq, respChan chan ulanode.LocalComm
 	for {
 		select {
 		case wVDsp := <-reqChan:
-			//fmt.Println ("[iviwinmgr reqChan]", wVDsp)
 			ret := sendUhmiIviWmJson(conn, wVDsp)
 			lcr := ulanode.LocalCommandReq{}
 			lcr.Ret = ret
@@ -231,28 +234,28 @@ func sendUhmiIviWmJson(conn net.Conn, req ulanode.LocalCommandReq) int {
 	case "local_comm":
 		return 0
 	default:
-		fmt.Println("Error req.Command")
+		ELog.Println("Error req.Command")
 		return -1
 	}
 	if err != nil {
-		fmt.Println("Error ProtocolJson")
+		ELog.Println("Error ProtocolJson")
 		return -1
 	}
 
-	fmt.Println("[iviwinmgr reqChan]", req)
+	DLog.Println("[iviwinmgr reqChan]", req)
 	if conn == nil {
 		return -1
 	}
 
 	err = sendMagicCode(conn)
 	if err != nil {
-		fmt.Println("Error SendRecv MagicCode")
+		ELog.Println("Error SendRecv MagicCode")
 		return -1
 	}
 
 	err = sendJsonMsg(conn, msg)
 	if err != nil {
-		fmt.Println("Error SendRecv JsonMsg")
+		ELog.Println("Error SendRecv JsonMsg")
 		return -1
 	}
 

@@ -19,14 +19,11 @@ package iviwinmgr
 
 import (
 	"ula-tools/internal/ula-node"
-	//. "ula-tools/internal/ulog"
 )
 
 type PLayerSplitIdTbl struct {
 	RDisplayId int
-
-	/* key:base VID, val: split VID */
-	IdPair map[int]int
+	IdPair     map[int]int
 }
 
 var pLayerSplitIDs []PLayerSplitIdTbl
@@ -54,7 +51,6 @@ func makeDiffPLayerSplitTbl(diffPLayerSplitIDs *[]PLayerSplitIdTbl, rDisplayId i
 func genSplitLayerID(
 	spscrns *ulanode.NodePixelScreens, layerVID int, rDisplayId int, diffPLayerSplitIDs *[]PLayerSplitIdTbl) int {
 
-	/* Check if the target split ID exists */
 	for _, splitID := range pLayerSplitIDs {
 		if splitID.RDisplayId == rDisplayId {
 			if v, ok := splitID.IdPair[layerVID]; ok {
@@ -64,10 +60,9 @@ func genSplitLayerID(
 		}
 	}
 
-	/* Generation of divideID and duplication check.  */
+	/* FIX-ME. should prepare dedicated ID genelator instead. */
 	newID := layerVID*100 + rDisplayId
 RETRY:
-	/* Check the VID of other Player */
 	for _, spscrn := range spscrns.Pscreens {
 		for _, splayer := range spscrn.Players {
 			if splayer.VID == newID {
@@ -77,7 +72,6 @@ RETRY:
 		}
 	}
 
-	/* Check if the split ID exists */
 	for _, splitID := range pLayerSplitIDs {
 		if _, ok := splitID.IdPair[newID]; ok {
 			newID++
@@ -120,7 +114,6 @@ func splitIviLayer(
 		for pidx, splayer := range spscrn.Players {
 			layerVID := splayer.VID
 
-			/* Check all data for the same VID*/
 			var layerCnt int
 			for _, ckscrn := range spscrns.Pscreens {
 				for _, cklayer := range ckscrn.Players {

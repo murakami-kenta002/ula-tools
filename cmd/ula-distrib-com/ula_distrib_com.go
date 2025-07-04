@@ -21,16 +21,15 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"ula-tools/internal/ula"
 	"ula-tools/internal/ula-client/ulamulticonn"
 	. "ula-tools/internal/ulog"
-	"io/ioutil"
-	"os"
 )
 
 func readStdinCommand() (string, error) {
 	var err error
-	/* read json command */
 	bs, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
 		ELog.Printf("Json Command ReadAll error: %s \n", err)

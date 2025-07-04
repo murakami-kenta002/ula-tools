@@ -25,24 +25,25 @@ import (
 type VirtualScreen struct {
 	VScrnDef ula.VScrnDef
 
-	/* the same as vscrnDef.Size.VirtualW and vscrnDef.Size.VirtualH */
 	VirtualWidth  int
 	VirtualHeight int
 
-	VirtualDisplays map[int]ula.VirtualDisplay
-	RealDisplays    map[int]RealDisplay
-	VdispVlayers    map[int][]ula.VirtualLayer
+	VirtualDisplays   map[int]ula.VirtualDisplay
+	RealDisplays      map[int]RealDisplay
+	VdispVlayers      map[int][]ula.VirtualLayer
+	VdispVsafetyAreas map[int][]ula.VirtualSafetyArea
 }
 
 func NewVirtualScreen(vscrnDef *ula.VScrnDef) (*VirtualScreen, error) {
 
 	vscreen := VirtualScreen{
-		VScrnDef:        *vscrnDef,
-		VirtualWidth:    vscrnDef.Def2D.Size.VirtualW,
-		VirtualHeight:   vscrnDef.Def2D.Size.VirtualH,
-		VirtualDisplays: make(map[int]ula.VirtualDisplay),
-		RealDisplays:    make(map[int]RealDisplay),
-		VdispVlayers:    make(map[int][]ula.VirtualLayer),
+		VScrnDef:          *vscrnDef,
+		VirtualWidth:      vscrnDef.Def2D.Size.VirtualW,
+		VirtualHeight:     vscrnDef.Def2D.Size.VirtualH,
+		VirtualDisplays:   make(map[int]ula.VirtualDisplay),
+		RealDisplays:      make(map[int]RealDisplay),
+		VdispVlayers:      make(map[int][]ula.VirtualLayer),
+		VdispVsafetyAreas: make(map[int][]ula.VirtualSafetyArea),
 	}
 
 	for _, r := range vscrnDef.Def2D.VirtualDisplays {
@@ -67,6 +68,20 @@ func NewVirtualScreen(vscrnDef *ula.VScrnDef) (*VirtualScreen, error) {
 		}
 	}
 
+	vVdispVsafetyAreas := make([]ula.VirtualSafetyArea, 0)
+	for _, r := range vscrnDef.VirtualSafetyArea {
+		vVdispVsafetyArea := ula.VirtualSafetyArea{
+			VirtualX: r.VirtualX,
+			VirtualY: r.VirtualY,
+			VirtualW: r.VirtualW,
+			VirtualH: r.VirtualH,
+		}
+		vVdispVsafetyAreas = append(vVdispVsafetyAreas, vVdispVsafetyArea)
+	}
+	for _, r := range vscrnDef.Def2D.VirtualDisplays {
+		vscreen.VdispVsafetyAreas[r.VDisplayId] = vVdispVsafetyAreas
+	}
+
 	return &vscreen, nil
 }
 
@@ -75,21 +90,25 @@ func (vscreen *VirtualScreen) Dup() *VirtualScreen {
 	copiedVDsps := make(map[int]ula.VirtualDisplay)
 	copiedRDsps := make(map[int]RealDisplay)
 	copiedVDispVLayers := make(map[int][]ula.VirtualLayer)
+	copiedVdispVsafetyAreas := make(map[int][]ula.VirtualSafetyArea)
 
 	for vdspid, vdisplay := range vscreen.VirtualDisplays {
 		copiedVDsp := vdisplay
 		copiedRDsp := vscreen.RealDisplays[vdspid]
 		copiedVLayers := vscreen.VdispVlayers[vdspid]
+		copiedVSafetyAreas := vscreen.VdispVsafetyAreas[vdspid]
 
 		copiedVDsps[vdspid] = copiedVDsp
 		copiedRDsps[vdspid] = copiedRDsp
 		copiedVDispVLayers[vdspid] = DupVirtualLayerSlice(copiedVLayers)
+		copiedVdispVsafetyAreas[vdspid] = DupVirtualSafetyAreaSlice(copiedVSafetyAreas)
 	}
 
 	copiedVscreen := *vscreen
 	copiedVscreen.VirtualDisplays = copiedVDsps
 	copiedVscreen.RealDisplays = copiedRDsps
 	copiedVscreen.VdispVlayers = copiedVDispVLayers
+	copiedVscreen.VdispVsafetyAreas = copiedVdispVsafetyAreas
 	return &copiedVscreen
 }
 

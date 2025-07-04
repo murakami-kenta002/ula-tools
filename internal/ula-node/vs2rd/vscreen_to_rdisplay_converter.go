@@ -24,12 +24,12 @@ import (
 )
 
 type WorkV2R struct {
-	vdisplay ula.VirtualDisplay
-	rdisplay ulanode.RealDisplay
-	vlayers  []ula.VirtualLayer
-
-	/* Geometry is Coordinated by RDisplay  */
-	players []ulanode.PixelLayer
+	vdisplay     ula.VirtualDisplay
+	rdisplay     ulanode.RealDisplay
+	vlayers      []ula.VirtualLayer
+	vsafetyareas []ula.VirtualSafetyArea
+	players      []ulanode.PixelLayer
+	psafetyareas []ulanode.PixelSafetyArea
 }
 
 type Vscreen2RdisplayConverter struct {
@@ -61,10 +61,11 @@ func (vs2rd *Vscreen2RdisplayConverter) DoConvert() error {
 	return nil
 }
 
-/* util function */
 func convVSurface2PSurface(vsurf *ula.VirtualSurface) *ulanode.PixelSurface {
 
 	psurf := ulanode.NewEmptyPixelSurface()
+
+	psurf.AppName = vsurf.AppName
 
 	psurf.ParentVID = vsurf.ParentVID
 	psurf.VID = vsurf.VID
@@ -89,6 +90,8 @@ func convVSurface2PSurface(vsurf *ula.VirtualSurface) *ulanode.PixelSurface {
 func convVLayer2PLayer(vlayer *ula.VirtualLayer) *ulanode.PixelLayer {
 
 	player := ulanode.NewEmptyPixelLayer()
+
+	player.AppName = vlayer.AppName
 
 	player.VID = vlayer.VID
 
@@ -132,6 +135,33 @@ func convVLayers2PLayers(sVlayers []ula.VirtualLayer) (dPlayers []ulanode.PixelL
 	return dPlayers
 }
 
+func convVSafetyArea2PSafetyArea(vSafetyArea *ula.VirtualSafetyArea) *ulanode.PixelSafetyArea {
+
+	pSafetyArea := ulanode.NewEmptyPixelSafetyArea()
+
+	pSafetyArea.PixelX = vSafetyArea.VirtualX
+	pSafetyArea.PixelY = vSafetyArea.VirtualY
+	pSafetyArea.PixelW = vSafetyArea.VirtualW
+	pSafetyArea.PixelH = vSafetyArea.VirtualH
+
+	return pSafetyArea
+}
+
+func convVSafetyAreas2PSafetyAreas(sVSafetyAreas []ula.VirtualSafetyArea) (dPSafetyAreas []ulanode.PixelSafetyArea) {
+	if sVSafetyAreas == nil {
+		return nil
+	}
+
+	dPSafetyAreas = make([]ulanode.PixelSafetyArea, 0)
+
+	for _, sVSafetyArea := range sVSafetyAreas {
+		dPSafetyArea := convVSafetyArea2PSafetyArea(&sVSafetyArea)
+		dPSafetyAreas = append(dPSafetyAreas, *dPSafetyArea)
+	}
+
+	return dPSafetyAreas
+}
+
 func isNeedForWorkV2R(vlayer *ula.VirtualLayer, arg interface{}) bool {
 	vDisplayId := arg.(int)
 
@@ -164,9 +194,10 @@ func generateWorkV2R(
 		rdisplay := vscreen.RealDisplays[vdspid]
 
 		wvdisp := WorkV2R{
-			vdisplay: *vdisplay.Dup(),
-			rdisplay: *rdisplay.Dup(),
-			vlayers:  ulanode.DupVirtualLayerSliceIfNeed(vscreen.VdispVlayers[vdspid], isNeedForWorkV2R, vdspid),
+			vdisplay:     *vdisplay.Dup(),
+			rdisplay:     *rdisplay.Dup(),
+			vlayers:      ulanode.DupVirtualLayerSliceIfNeed(vscreen.VdispVlayers[vdspid], isNeedForWorkV2R, vdspid),
+			vsafetyareas: ulanode.DupVirtualSafetyAreaSlice(vscreen.VdispVsafetyAreas[vdspid]),
 		}
 
 		workV2RMap[vdspid] = wvdisp
@@ -190,7 +221,6 @@ func convGlobalToVDisplayCoordinateSub(
 		nvlayer_vsw int
 	)
 
-	/* Assume src cutout area is the entire layer in this part */
 	if vdisp_vx <= vlayer_vdx &&
 		vlayer_vdx <= vdisp_vx+vdisp_vw &&
 		vdisp_vx+vdisp_vw <= vlayer_vdx+vlayer_vdw {
@@ -232,7 +262,6 @@ func convGlobalToVDisplayCoordinateSub(
 		nvlayer_vsw = 0
 	}
 
-	/* Corresponds to src cutout position */
 	nvlayer_vsx = nvlayer_vsx*vlayer_vsw/vlayer_vdw + vlayer_vsx
 	nvlayer_vsw = nvlayer_vsw * vlayer_vsw / vlayer_vdw
 
@@ -298,6 +327,118 @@ func convToVDisplayCoordinate(sVlayers []ula.VirtualLayer,
 	return dVlayers
 }
 
+func sAreaConvGlobalToVDisplayCoordinateSub(
+	vdisp_vx int,
+	vdisp_vw int,
+	vlayer_vdx int,
+	vlayer_vdw int) (int, int) {
+
+	var (
+		nvlayer_vdx int
+		nvlayer_vdw int
+	)
+
+	if vdisp_vx <= vlayer_vdx &&
+		vlayer_vdx <= vdisp_vx+vdisp_vw &&
+		vdisp_vx+vdisp_vw <= vlayer_vdx+vlayer_vdw {
+		nvlayer_vdx = vlayer_vdx - vdisp_vx
+		nvlayer_vdw = vdisp_vx + vdisp_vw - vlayer_vdx
+	} else if vlayer_vdx <= vdisp_vx &&
+		vdisp_vx+vdisp_vw <= vlayer_vdx+vlayer_vdw {
+		nvlayer_vdx = 0
+		nvlayer_vdw = vdisp_vw
+	} else if vlayer_vdx <= vdisp_vx &&
+		vdisp_vx <= vlayer_vdx+vlayer_vdw &&
+		vlayer_vdx+vlayer_vdw <= vdisp_vx+vdisp_vw {
+		nvlayer_vdx = 0
+		nvlayer_vdw = vlayer_vdx + vlayer_vdw - vdisp_vx
+	} else if vdisp_vx <= vlayer_vdx &&
+		vlayer_vdx+vlayer_vdw <= vdisp_vx+vdisp_vw {
+		nvlayer_vdx = vlayer_vdx - vdisp_vx
+		nvlayer_vdw = vlayer_vdw
+	} else {
+		nvlayer_vdx = 0
+		nvlayer_vdw = 0
+	}
+	return nvlayer_vdx, nvlayer_vdw
+}
+
+func sAreaConvGlobalToVDisplayCoordinate(sVsafetyArea *ula.VirtualSafetyArea,
+	vdisp *ula.VirtualDisplay) *ula.VirtualSafetyArea {
+
+	vdisp_vx := vdisp.VirtualX
+	vdisp_vy := vdisp.VirtualY
+	vdisp_vw := vdisp.VirtualW
+	vdisp_vh := vdisp.VirtualH
+
+	newVsafetyarea := sVsafetyArea.Dup()
+
+	vsafetyarea_vdx := sVsafetyArea.VirtualX
+	vsafetyarea_vdy := sVsafetyArea.VirtualY
+	vsafetyarea_vdw := sVsafetyArea.VirtualW
+	vsafetyarea_vdh := sVsafetyArea.VirtualH
+
+	nvlayer_vdx, nvlayer_vdw :=
+		sAreaConvGlobalToVDisplayCoordinateSub(vdisp_vx, vdisp_vw, vsafetyarea_vdx, vsafetyarea_vdw)
+
+	nvlayer_vdy, nvlayer_vdh :=
+		sAreaConvGlobalToVDisplayCoordinateSub(vdisp_vy, vdisp_vh, vsafetyarea_vdy, vsafetyarea_vdh)
+
+	newVsafetyarea.VirtualX = nvlayer_vdx
+	newVsafetyarea.VirtualY = nvlayer_vdy
+	newVsafetyarea.VirtualW = nvlayer_vdw
+	newVsafetyarea.VirtualH = nvlayer_vdh
+
+	return newVsafetyarea
+}
+
+func sAreaConvToVDisplayCoordinate(sVSafetyAreas []ula.VirtualSafetyArea,
+	vdisp *ula.VirtualDisplay) []ula.VirtualSafetyArea {
+
+	dVSafetyAreas := make([]ula.VirtualSafetyArea, 0)
+
+	for _, vSafetyArea := range sVSafetyAreas {
+
+		var newVSafetyArea ula.VirtualSafetyArea
+		newVSafetyArea = *sAreaConvGlobalToVDisplayCoordinate(&vSafetyArea, vdisp)
+
+		dVSafetyAreas = append(dVSafetyAreas, newVSafetyArea)
+	}
+
+	return dVSafetyAreas
+}
+
+func sAreaConvToRDisplayCoordinate(sVSafetyAreas []ula.VirtualSafetyArea,
+	vdisp *ula.VirtualDisplay, rdisp *ulanode.RealDisplay) []ula.VirtualSafetyArea {
+
+	dVSafetyAreas := make([]ula.VirtualSafetyArea, 0)
+
+	vdisp_vw := vdisp.VirtualW
+	vdisp_vh := vdisp.VirtualH
+
+	rdisp_pixw := rdisp.PixelW
+	rdisp_pixh := rdisp.PixelH
+
+	for _, vSafetyArea := range sVSafetyAreas {
+
+		newVSafetyArea := vSafetyArea.Dup()
+
+		vSafetyArea_vdx := vSafetyArea.VirtualX
+		vSafetyArea_vdy := vSafetyArea.VirtualY
+		vSafetyArea_vdw := vSafetyArea.VirtualW
+		vSafetyArea_vdh := vSafetyArea.VirtualH
+
+		newVSafetyArea.VirtualX = vSafetyArea_vdx * rdisp_pixw / vdisp_vw
+		newVSafetyArea.VirtualW = vSafetyArea_vdw * rdisp_pixw / vdisp_vw
+		newVSafetyArea.VirtualY = vSafetyArea_vdy * rdisp_pixh / vdisp_vh
+		newVSafetyArea.VirtualH = vSafetyArea_vdh * rdisp_pixh / vdisp_vh
+
+		dVSafetyAreas = append(dVSafetyAreas, *newVSafetyArea)
+	}
+
+	return dVSafetyAreas
+}
+
 func convToRDisplayCoordinate(sVlayers []ula.VirtualLayer,
 	vdisp *ula.VirtualDisplay, rdisp *ulanode.RealDisplay) []ula.VirtualLayer {
 
@@ -318,7 +459,6 @@ func convToRDisplayCoordinate(sVlayers []ula.VirtualLayer,
 		vlayer_vdw := vlayer.VdstW
 		vlayer_vdh := vlayer.VdstH
 
-		/* Convert RealDisplay Geometory */
 		newVlayer.VdstX = vlayer_vdx * rdisp_pixw / vdisp_vw
 		newVlayer.VdstW = vlayer_vdw * rdisp_pixw / vdisp_vw
 		newVlayer.VdstY = vlayer_vdy * rdisp_pixh / vdisp_vh
@@ -334,9 +474,13 @@ func convVDisplay2RDisplayCoordinate(workV2RMap map[int]WorkV2R) {
 
 	for key, workV2R := range workV2RMap {
 		tmpVlayers := convToVDisplayCoordinate(workV2R.vlayers, &workV2R.vdisplay)
-		tmpVlayers2 := convToRDisplayCoordinate(tmpVlayers, &workV2R.vdisplay, &workV2R.rdisplay)
-		tmpPlayers := convVLayers2PLayers(tmpVlayers2)
-		workV2R.players = tmpPlayers
+		vlayers := convToRDisplayCoordinate(tmpVlayers, &workV2R.vdisplay, &workV2R.rdisplay)
+		workV2R.players = convVLayers2PLayers(vlayers)
+
+		tmpVSAreas := sAreaConvToVDisplayCoordinate(workV2R.vsafetyareas, &workV2R.vdisplay)
+		vSAreas := sAreaConvToRDisplayCoordinate(tmpVSAreas, &workV2R.vdisplay, &workV2R.rdisplay)
+		workV2R.psafetyareas = convVSafetyAreas2PSafetyAreas(vSAreas)
+
 		workV2RMap[key] = workV2R
 	}
 }
@@ -347,7 +491,7 @@ func (vs2rd *Vscreen2RdisplayConverter) GetNodePixelScreens() (*ulanode.NodePixe
 
 	for _, workV2R := range vs2rd.workV2RMap {
 
-		pscrn, err := ulanode.NewPixelScreen(&workV2R.rdisplay, workV2R.players)
+		pscrn, err := ulanode.NewPixelScreen(&workV2R.rdisplay, workV2R.players, workV2R.psafetyareas)
 		if err != nil {
 			return nil, err
 		}

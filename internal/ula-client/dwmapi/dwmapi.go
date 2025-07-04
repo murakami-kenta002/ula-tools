@@ -25,33 +25,38 @@ import (
 	. "ula-tools/internal/ulog"
 )
 
-func DwmSetSystemLayout() {
+func DwmSetSystemLayout() int {
 
 	calayoutTree, err := readclusterapp.ReadCALayoutTreeFromCfg()
 	if err != nil {
 		ELog.Println(err)
-		return
+		return -1
 	}
 
 	var layoutComm string
 	layoutComm, err = ulacommgen.GenerateUlaCommInitialVscreen(calayoutTree)
 	if err != nil {
 		ELog.Println(err)
-		return
+		return -1
 	}
 
 	err = ulamulticonn.UlaMulCon.SendLayoutCommand(layoutComm)
 	if err != nil {
 		ELog.Println(err)
-		return
+		return -1
 	}
+
+	return 0
 }
 
-func DwmInit() {
+func DwmInit() int {
+
 	force := ula.GetEnvBool("ULA_FORCE", false)
 	err := ulamulticonn.UlaConnectionInit(force)
 	if err != nil {
 		ELog.Println(err)
-		return
+		return -1
 	}
+
+	return 0
 }
