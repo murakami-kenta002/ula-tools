@@ -20,11 +20,11 @@ package readclusterapp
 import (
 	"encoding/json"
 	"errors"
+	"io/ioutil"
+	"path/filepath"
 	"ula-tools/internal/ula"
 	"ula-tools/internal/ula-client/core"
 	. "ula-tools/internal/ulog"
-	"io/ioutil"
-	"path/filepath"
 )
 
 const (
@@ -50,8 +50,8 @@ type caCfgInitialLayoutVsurface struct {
 type caCfgInitialLayoutVLayer struct {
 	VID        int                          `json:"VID"`
 	Coord      *string                      `json:"coord"`
-	VdisplayId *int                         `json:"vdisplay_id"` /* pointer type for check json property existence */
-	Zorder     *int                         `json:"z_order"`     /* pointer type for check json property existence */
+	VdisplayId *int                         `json:"vdisplay_id"`
+	Zorder     *int                         `json:"z_order"`
 	VirtualW   int                          `json:"virtual_w"`
 	VirtualH   int                          `json:"virtual_h"`
 	VsrcX      int                          `json:"vsrc_x"`

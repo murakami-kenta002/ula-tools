@@ -18,7 +18,7 @@
 package core
 
 type CAVsurface struct {
-	AppName    string /* who is it created by */
+	AppName    string
 	VID        int
 	PixelW     int
 	PixelH     int
@@ -34,7 +34,7 @@ type CAVsurface struct {
 }
 
 type CAVlayer struct {
-	AppName    string /* who is it created by */
+	AppName    string
 	VID        int
 	ZOrder     int
 	Coord      string

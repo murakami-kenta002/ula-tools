@@ -24,17 +24,22 @@ import (
 
 type workIvi struct {
 	rdisplay ulanode.RealDisplay
-
-	/* Geometry is Coordinated by RDisplay  */
-	players []ulanode.PixelLayer
+	players  []ulanode.PixelLayer
 }
 
-type IviCommandGenerator struct {
-	workIviMap map[int]workIvi
-}
+type IviPlugin struct{}
 
-func NewIviCommandGenerator(
-	sps *ulanode.NodePixelScreens) (*IviCommandGenerator, error) {
+func (plugin IviPlugin) GenerateLocalCommandReq(acdata *ulanode.ApplyCommandData, sps *ulanode.NodePixelScreens, oldSps *ulanode.NodePixelScreens) ([]*ulanode.LocalCommandReq, error) {
+	ltqs := []*ulanode.LocalCommandReq{}
+
+	splitOldSps, err := splitLayer(oldSps.Dup())
+	if err != nil {
+		return nil, errors.New("splitLayer error")
+	}
+	oldwIviMap, err := generateWorkIvi(splitOldSps)
+	if err != nil {
+		return nil, errors.New("generateWorkIvi error")
+	}
 
 	splitSps, err := splitLayer(sps.Dup())
 	if err != nil {
@@ -45,19 +50,7 @@ func NewIviCommandGenerator(
 		return nil, errors.New("generateWorkIvi error")
 	}
 
-	iviltg := &IviCommandGenerator{
-		workIviMap: wIviMap,
-	}
-
-	return iviltg, nil
-}
-
-func (iviltg *IviCommandGenerator) GenerateLocalCommandReq(acdata *ulanode.ApplyCommandData) ([]*ulanode.LocalCommandReq, error) {
-	ltqs := []*ulanode.LocalCommandReq{}
-
-	wIviMap := iviltg.workIviMap
-
-	ret, err := pickupInitialVScreen(wIviMap)
+	ret, err := pickupInitialVScreen(wIviMap, oldwIviMap)
 	if err == nil && ret != nil {
 		ltqs = append(ltqs, ret)
 	}
@@ -142,18 +135,21 @@ func generateLocalCommand(lcomm string,
 }
 
 func pickupInitialVScreen(
-	wIviMap map[int]workIvi) (*ulanode.LocalCommandReq, error) {
+	wIviMap map[int]workIvi,
+	oldwIviMap map[int]workIvi) (*ulanode.LocalCommandReq, error) {
 
 	lcomm := ""
 	pickupPlayersMap := make(map[int][]ulanode.PixelLayer, len(wIviMap))
 
 	for key, wIvi := range wIviMap {
+		oldwIvi := oldwIviMap[key]
 		pickupPlayers := pickupPlayersMap[key]
 
-		if len(wIvi.players) != 0 {
+		if len(oldwIvi.players) == 0 && len(wIvi.players) != 0 {
 			lcomm = "initial_vscreen"
 			pickupPlayers = ulanode.DupPixelLayerSlice(wIvi.players)
 
+			oldwIviMap[key] = wIvi
 			pickupPlayersMap[key] = pickupPlayers
 		}
 	}

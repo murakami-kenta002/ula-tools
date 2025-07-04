@@ -18,6 +18,7 @@
 package ulanode
 
 import (
+	_ "encoding/json"
 	"errors"
 	"ula-tools/internal/ula"
 	. "ula-tools/internal/ulog"
@@ -106,6 +107,11 @@ func getCoordFromJsonDef(mJson map[string]interface{}, key string, defval ula.Co
 
 func generateSurfaceFromParam(layerId int, mSurface map[string]interface{}) (*ula.VirtualSurface, error) {
 
+	appli_name, err := getStringFromJson(mSurface, "appli_name")
+	if err != nil {
+		return nil, err
+	}
+
 	surfaceId, err := getIntFromJson(mSurface, "VID")
 	if err != nil {
 		return nil, err
@@ -179,6 +185,7 @@ func generateSurfaceFromParam(layerId int, mSurface map[string]interface{}) (*ul
 	}
 
 	vsurface := ula.VirtualSurface{
+		AppName:    appli_name,
 		ParentVID:  layerId,
 		VID:        surfaceId,
 		PixelW:     pixelW,
@@ -198,6 +205,12 @@ func generateSurfaceFromParam(layerId int, mSurface map[string]interface{}) (*ul
 }
 
 func generateLayerFromParam(mLayer map[string]interface{}, genSurfaces bool, existingVlayer *ula.VirtualLayer) (*ula.VirtualLayer, error) {
+
+	appli_name, err := getStringFromJson(mLayer, "appli_name")
+	if err != nil {
+		ELog.Println("error in generateLayerFromParam")
+		return nil, err
+	}
 
 	layerId, err := getIntFromJson(mLayer, "VID")
 	if err != nil {
@@ -378,6 +391,7 @@ func generateLayerFromParam(mLayer map[string]interface{}, genSurfaces bool, exi
 	}
 
 	vlayer := ula.VirtualLayer{
+		AppName:    appli_name,
 		VID:        layerId,
 		Coord:      coord,
 		VDisplayId: vdisplayId,
@@ -398,7 +412,6 @@ func generateLayerFromParam(mLayer map[string]interface{}, genSurfaces bool, exi
 	return &vlayer, nil
 }
 
-/* fill initial virtual layer, virtual window param*/
 func fillVscreenFromParam(vscreen *VirtualScreen, mJson map[string]interface{}) error {
 
 	vlayers := make([]ula.VirtualLayer, 0)

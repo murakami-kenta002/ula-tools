@@ -24,17 +24,20 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"ula-tools/internal/ula"
-	"ula-tools/internal/ula-node"
-	"ula-tools/internal/ula-node/iviwinmgr"
-	"ula-tools/internal/ula-node/vs2rd"
-	. "ula-tools/internal/ulog"
 	"io"
 	"net"
 	"os"
 	"reflect"
 	"strconv"
+	_ "strings"
 	"sync"
+	_ "time"
+	"ula-tools/internal/ula"
+	"ula-tools/internal/ula-node"
+	"ula-tools/internal/ula-node/iviwinmgr"
+	"ula-tools/internal/ula-node/rvgpuwinmgr"
+	"ula-tools/internal/ula-node/vs2rd"
+	. "ula-tools/internal/ulog"
 )
 
 var MAGIC_CODE []byte = []byte{0x55, 0x4C, 0x41, 0x30} // 'ULA0' ascii code
@@ -67,7 +70,6 @@ func getIpv4AddrsOfAllInterfaces() ([]string, error) {
 		return ipaddrs, err
 	}
 
-	/* make ipaddrs slice */
 	for _, i := range ifaces {
 		addrs, err := i.Addrs()
 		if err != nil {
@@ -231,6 +233,7 @@ func processCommandLoop(
 	respChan chan ulanode.LocalCommandReq,
 	jsonChan chan map[string]interface{},
 	retChansMap map[int]interface{},
+	plugin ulanode.LocalCommandGenerator,
 ) {
 
 	vs2rdConv, err := vs2rd.NewVscreen2RdisplayConverter(vscrn, nodeId)
@@ -260,6 +263,7 @@ func processCommandLoop(
 		listenerId := mJson["listener_id"].(int)
 
 		vscrnNew := vscrn.Dup()
+
 		acdata, err := vscrnNew.ApplyCommand(mJson)
 		if err != nil {
 			ret = -1
@@ -287,21 +291,14 @@ func processCommandLoop(
 			continue
 		}
 
-		spscrns, err = vsconv.GetNodePixelScreens()
+		spscrnsNew, err := vsconv.GetNodePixelScreens()
 		if err != nil {
 			ret = -1
 			commResponseResult(ret, listenerId, retChansMap)
 			continue
 		}
 
-		iviltg, err := iviwinmgr.NewIviCommandGenerator(spscrns)
-		if err != nil {
-			ret = -1
-			commResponseResult(ret, listenerId, retChansMap)
-			continue
-		}
-		var ltg ulanode.LocalCommandGenerator = iviltg
-		reqs, err := ltg.GenerateLocalCommandReq(acdata)
+		reqs, err := plugin.GenerateLocalCommandReq(acdata, spscrnsNew, spscrns)
 		if err != nil {
 			ret = -1
 			commResponseResult(ret, listenerId, retChansMap)
@@ -311,6 +308,7 @@ func processCommandLoop(
 		ret = submitCommand(reqs, reqChan, respChan)
 
 		vscrn = vscrnNew
+		spscrns = spscrnsNew
 
 		commResponseResult(ret, listenerId, retChansMap)
 	}
@@ -369,11 +367,12 @@ func mainLoop(
 	vscrn *ulanode.VirtualScreen,
 	nodeId int,
 	reqChan chan ulanode.LocalCommandReq,
-	respChan chan ulanode.LocalCommandReq) {
+	respChan chan ulanode.LocalCommandReq,
+	plugin ulanode.LocalCommandGenerator) {
 
 	jsonChan := make(chan map[string]interface{}, 1)
 	retChansMap := make(map[int]interface{})
-	go processCommandLoop(vscrn, nodeId, reqChan, respChan, jsonChan, retChansMap)
+	go processCommandLoop(vscrn, nodeId, reqChan, respChan, jsonChan, retChansMap, plugin)
 
 	listenerId := 0
 	for {
@@ -393,7 +392,6 @@ func mainLoop(
 
 func printUsage() {
 	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-
 	fmt.Fprintf(os.Stderr, "%s [option] | listenIp listenPort nodeId\n", os.Args[0])
 
 	fmt.Fprintf(os.Stderr, "[option]\n")
@@ -441,13 +439,6 @@ func main() {
 		nodeId     int
 	)
 
-	/*
-		Set ula-node parameters.
-		Generally, the hostname is retrieved by os.hostname and used as a key to find a matching node_id in the VScrnDef file.
-		And the listenIP and listenPort parameters are associated with node_id in the VScrnDef file.
-		In addition, the listenIP is compared to what is described in interfaces to determine if it can actually be used.
-		Optionally, you can search for parameters by directly specifying the hostname and nodeid.
-	*/
 	if len(flag.Args()) == 0 {
 
 		if keyNodeId != -1 && keyHostName != "" {
@@ -463,7 +454,6 @@ func main() {
 			}
 		}
 
-		/* search ulaNode Params */
 		if keyNodeId != -1 {
 			nodeId = keyNodeId
 		} else {
@@ -474,7 +464,6 @@ func main() {
 			}
 		}
 
-		/* search my Ip Addr */
 		ipAddrs, err := getIpv4AddrsOfAllInterfaces()
 		if err != nil {
 			ELog.Println("getIpv4AddrsOfAllInterfaces error : ", err)
@@ -500,13 +489,10 @@ func main() {
 		return
 	}
 
-	/* set output log prefix */
 	prefix := "ula-node-" + strconv.Itoa(nodeId)
 	SetLogPrefix(prefix)
-
 	DLog.Println(listenIp, ":", listenPort)
 
-	/* generate listen addr */
 	listenAddr := listenIp + ":" + strconv.Itoa(listenPort)
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
@@ -525,7 +511,13 @@ func main() {
 	reqChan := make(chan ulanode.LocalCommandReq, 5)
 	respChan := make(chan ulanode.LocalCommandReq, 5)
 
-	go iviwinmgr.Start(reqChan, respChan)
+	var plugin ulanode.LocalCommandGenerator
+	if rvgpuwinmgr.IsRvgpuCompositor(vscrnDef, nodeId) {
+		plugin = rvgpuwinmgr.RvgpuPlugin{}
+	} else {
+		plugin = iviwinmgr.IviPlugin{}
+	}
+	go plugin.Start(reqChan, respChan)
 
-	mainLoop(listener, vscrn, nodeId, reqChan, respChan)
+	mainLoop(listener, vscrn, nodeId, reqChan, respChan, plugin)
 }

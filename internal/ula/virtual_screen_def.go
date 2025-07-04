@@ -63,8 +63,19 @@ type VScrnDef struct {
 				DebugPort int  `json:"debug_port"`
 				Port      int  `json:"port"`
 			} `json:"ula"`
+			Compositor []struct {
+				VDisplayIds    []int  `json:"vdisplay_ids"`
+				SockDomainName string `json:"sock_domain_name"`
+			} `json:"compositor"`
 		} `json:"framework_node"`
 	} `json:"distributed_window_system"`
+
+	VirtualSafetyArea []struct {
+		VirtualX int `json:"virtual_x"`
+		VirtualY int `json:"virtual_y"`
+		VirtualW int `json:"virtual_w"`
+		VirtualH int `json:"virtual_h"`
+	} `json:"virtual_safety_area"`
 }
 
 func ReadVScrnDef(vsdPath ...string) (*VScrnDef, error) {
@@ -76,20 +87,17 @@ func ReadVScrnDef(vsdPath ...string) (*VScrnDef, error) {
 	}
 	f, err := os.Open(fname)
 	if err != nil {
-		//ELog.Printf("ReadVScrnDef Err: %s \n", err)
 		return nil, err
 	}
 
 	jsonBytes, err := ioutil.ReadAll(f)
 	if err != nil {
-		//ELog.Printf("ReadAll error: %s \n", err)
 		return nil, err
 	}
 
 	var vscrnDef VScrnDef
 	err = json.Unmarshal(jsonBytes, &vscrnDef)
 	if err != nil {
-		//ELog.Println("json dec", err)
 		return nil, errors.New("json decode error")
 	}
 

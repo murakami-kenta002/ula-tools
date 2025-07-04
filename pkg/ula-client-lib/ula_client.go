@@ -23,13 +23,15 @@ import (
 )
 
 //export dwm_set_system_layout
-func dwm_set_system_layout() {
-	dwmapi.DwmSetSystemLayout()
+func dwm_set_system_layout() C.int {
+	val := dwmapi.DwmSetSystemLayout()
+	return C.int(val)
 }
 
 //export dwm_init
-func dwm_init() {
-	dwmapi.DwmInit()
+func dwm_init() C.int {
+	val := dwmapi.DwmInit()
+	return C.int(val)
 }
 
 func main() {}
