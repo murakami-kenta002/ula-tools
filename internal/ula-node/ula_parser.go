@@ -105,12 +105,7 @@ func getCoordFromJsonDef(mJson map[string]interface{}, key string, defval ula.Co
 	return defval, nil
 }
 
-func generateSurfaceFromParam(layerId int, mSurface map[string]interface{}) (*ula.VirtualSurface, error) {
-
-	appli_name, err := getStringFromJson(mSurface, "appli_name")
-	if err != nil {
-		return nil, err
-	}
+func generateSurfaceFromParam(layerId int, mSurface map[string]interface{}, appli_name string) (*ula.VirtualSurface, error) {
 
 	surfaceId, err := getIntFromJson(mSurface, "VID")
 	if err != nil {
@@ -381,7 +376,7 @@ func generateLayerFromParam(mLayer map[string]interface{}, genSurfaces bool, exi
 		}
 
 		for _, mSurface := range surfaces {
-			newVsurface, err := generateSurfaceFromParam(layerId, mSurface.(map[string]interface{}))
+			newVsurface, err := generateSurfaceFromParam(layerId, mSurface.(map[string]interface{}), appli_name)
 			if err != nil {
 				ELog.Println("error in generateLayerFromParam")
 				return nil, err
