@@ -59,13 +59,14 @@ func IsRvgpuCompositor(
 							domainName: UHMI_RVGPU_LAYOUT_SOCK + "." + com.SockDomainName,
 						}
 						rvgpuComs = append(rvgpuComs, compositor)
-						return true
 					}
 				}
 			}
 		}
 	}
-
+	if len(rvgpuComs) > 0 {
+		return true
+	}
 	return false
 }
 
