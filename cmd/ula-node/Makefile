@@ -87,7 +87,7 @@ $(CLEAN_MODULES):
 
 install: $(INSTALL_MODULES)
 	set -e;\
-	$(GO) install ${GOBUILDFLAGS} .
+	CGO_ENABLED=1 $(GO) install ${GOBUILDFLAGS} .
 
 .PHONY: test
 test: $(TEST_MODULES)

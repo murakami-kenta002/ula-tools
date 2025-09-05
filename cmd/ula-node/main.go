@@ -17,6 +17,7 @@
 
 package main
 
+import "C"
 import (
 	"bufio"
 	"encoding/binary"
@@ -497,6 +498,62 @@ func main() {
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		ELog.Printf("Listen error: %s", err)
+		return
+	}
+
+	defer listener.Close()
+
+	vscrn, err := ulanode.NewVirtualScreen(vscrnDef)
+	if err != nil {
+		ELog.Println("Could not generate initial screen.", err)
+		return
+	}
+
+	reqChan := make(chan ulanode.LocalCommandReq, 5)
+	respChan := make(chan ulanode.LocalCommandReq, 5)
+
+	var plugin ulanode.LocalCommandGenerator
+	if rvgpuwinmgr.IsRvgpuCompositor(vscrnDef, nodeId) {
+		plugin = rvgpuwinmgr.RvgpuPlugin{}
+	} else {
+		plugin = iviwinmgr.IviPlugin{}
+	}
+	go plugin.Start(reqChan, respChan)
+
+	mainLoop(listener, vscrn, nodeId, reqChan, respChan, plugin)
+}
+
+//export StartUlanode
+func StartUlanode(vScrnDefFile string, keyNodeId int, keyHostName string, keyIpAddr string) {
+
+	vscrnDef, err := ula.ReadVScrnDef(vScrnDefFile)
+	if err != nil {
+		ELog.Println("ReadVScrnDef fail", err)
+		return
+	}
+	var (
+		listenIp   string
+		listenPort int
+		nodeId     int
+	)
+
+	listenIp = keyIpAddr
+	nodeId, err = getNodeIdByHostName(keyHostName, vscrnDef)
+	if err != nil {
+		fmt.Println("getNodeIdByHostName error : ", err)
+		return
+	}
+
+	listenPort, err = getPort(nodeId, vscrnDef)
+	if err != nil {
+		fmt.Println("getPort error : ", err)
+		return
+	}
+
+	listenAddr := listenIp + ":" + strconv.Itoa(listenPort)
+	listener, err := net.Listen("tcp", listenAddr)
+	if err != nil {
+		fmt.Printf("Listen error: %s", err)
 		return
 	}
 
